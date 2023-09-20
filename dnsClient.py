@@ -42,7 +42,7 @@ def send_dns_query(domain_name, dns_server, dns_port, qtype, max_retries, timeou
             return response, elapsed_time, retries, query_size
 
         except Exception as e:
-            # print(f"An error occurred: {e}")
+            print(f"An error occurred: {e}")
             time.sleep(timeout)
             retries += 1
 
@@ -88,9 +88,9 @@ def main():
     if not args.server_address:
         print("\nERROR \t Incorrect input syntax: Please add a server address")
         exit()
-    if not is_valid_server_address(args.server_address, args.port_number, args.timeout):
-        print("\nERROR \t Incorrect input syntax: Server address is not valid")
-        exit()
+    # if not is_valid_server_address(args.server_address, args.port_number, args.timeout):
+    #     print("\nERROR \t Incorrect input syntax: Server address is not valid")
+    #     exit()
 
     if not args.hostname:
         print("\nERROR \t Incorrect input syntax: Please add a hostname")

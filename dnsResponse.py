@@ -6,6 +6,8 @@ def decode_response(response, query_size):
 
     message = binascii.hexlify(response).decode("utf-8")
 
+    # print(message)
+
     ID = message[0:4] # Id extracted
     FLAGS = message[4:8] # Flags extracted
     AA = int(bin(int(FLAGS, 16))[7])
@@ -29,14 +31,15 @@ def decode_response(response, query_size):
 
     QDCOUNT = message[8:12] # Number of questions extracted
     ANCOUNT = int(message[12:16], 16) # Number of answers extracted
+    # print(message[12:16])
     NSCOUNT = int(message[16:20], 16) # Number of records in Authoritative section extracted
+    # print(message[16:20])
     ARCOUNT = int(message[20:24], 16) # Number of records in Additional section
+    # print(message[20:24])
 
     # Main stuff start at query_size
     pointer = query_size
 
-    print(NSCOUNT)
-    print(AA)
     AUTH = "auth" if bool(AA) else "noauth"
 
     if ANCOUNT >= 1:
@@ -67,9 +70,41 @@ def decode_response(response, query_size):
                 print("CNAME\t" + DATA_decoded + "\t" + str(TTL) + "\t" +AUTH)
             else:
                 print("NOTFOUND")
+    
+    if NSCOUNT >= 1:
+        #SKIP OVER AUTHORITATIVE RECORDS
+        for i in range(0, NSCOUNT):
+            RDLENGTH = int(message[pointer + 20:pointer + 24], 16)
+            pointer = pointer+24+(RDLENGTH * 2)
+
 
     if ARCOUNT >= 1:
         print("***Additional Section (" + str(ARCOUNT) +" records)***")
+
+        for i in range(0, ARCOUNT):
+            POINTER = message[pointer: pointer+4]
+            TYPE_RESPONSE = int(message[pointer+4: pointer+8], 16)
+            RESPONSE_CLASS_IN = message[pointer+8: pointer+12]
+            TTL = int(message[pointer+12:pointer+20], 16)
+            RDLENGTH = int(message[pointer + 20:pointer + 24], 16)
+            DATA = message[pointer+24: pointer+24+(RDLENGTH * 2)]
+
+            pointer = pointer+24+(RDLENGTH * 2)
+
+            if TYPE_RESPONSE == 1: #then A
+                IP_ADDRESS = socket.inet_ntoa(bytes.fromhex(DATA))
+                print("IP\t" + IP_ADDRESS + "\t" + str(TTL) + "\t" + AUTH)
+            elif TYPE_RESPONSE == 2: #then NS
+                DATA_decoded = ".".join(map(lambda p: binascii.unhexlify(p).decode('iso8859-1'), parse_parts(DATA, 0, [])))
+                print("NS \t " + DATA_decoded + " \t " + str(TTL) + "\t" + AUTH)
+            elif TYPE_RESPONSE == 15: #then MX
+                DATA_decoded = ".".join(map(lambda p: binascii.unhexlify(p).decode('iso8859-1'), parse_parts(DATA, 0, [])))
+                print("MX\t" + DATA_decoded + " \t " + str(TTL) + "\t" + AUTH)
+            elif TYPE_RESPONSE == 5: #then CNAME
+                DATA_decoded = ".".join(map(lambda p: binascii.unhexlify(p).decode('iso8859-1'), parse_parts(DATA, 0, [])))
+                print("CNAME\t" + DATA_decoded + "\t" + str(TTL) + "\t" +AUTH)
+            else:
+                print("NOTFOUND")
 
 #this function has been taken from open-source code: https://gist.github.com/mrpapercut/92422ecf06b5ab8e64e502da5e33b9f7
 def parse_parts(message, start, parts):
