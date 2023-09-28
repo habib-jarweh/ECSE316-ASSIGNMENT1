@@ -7,8 +7,10 @@ from dnsRequest import build_dns_request
 from dnsResponse import decode_response
 from utils import is_valid_hostname, is_valid_server_address
 import time
+from timeout_decorator import timeout
 
-def send_dns_query(domain_name, dns_server, dns_port, qtype, max_retries, timeout):
+
+def send_dns_query(domain_name, dns_server, dns_port, qtype, max_retries, timeouts):
     # Build the DNS request packet
     dns_request = build_dns_request(domain_name, qtype)
     # print(binascii.hexlify(dns_request).decode("utf-8"))
@@ -22,17 +24,31 @@ def send_dns_query(domain_name, dns_server, dns_port, qtype, max_retries, timeou
 
     retries = 1
 
+    # @timeout(timeouts)
+    # def receive(udp_socket):
+    #     return udp_socket.recvfrom(2048)
+
     while retries <= max_retries:
 
         try:
+
             # Send the DNS request packet to the DNS server
-        
             start_time = time.time()  # Record the current time
             udp_socket.sendto(dns_request, server_address)
 
-            # Receive the DNS response
-            response, _ = udp_socket.recvfrom(1024)
-            end_time = time.time()  # Record the time after the function has completed
+            response = None
+
+            # while time.time()-start_time < timeout:
+            #     # Receive the DNS response
+            #     pass
+            response, _ = udp_socket.recvfrom(2048)
+
+
+            if response:
+                end_time = time.time()  # Record the time after the function has completed
+            # else:
+            #     print("Request timed out, retrying")
+            #     raise Exception
 
             # Close the UDP socket
             udp_socket.close()
@@ -42,12 +58,12 @@ def send_dns_query(domain_name, dns_server, dns_port, qtype, max_retries, timeou
             return response, elapsed_time, retries, query_size
 
         except Exception as e:
-            print(f"An error occurred: {e}")
-            time.sleep(timeout)
+            # print(f"An error occurred: {e}")
+            # time.sleep(timeouts)
             retries += 1
 
 
-    return None, None, max_retries, e
+    return None, None, max_retries, "error"
 
 def main():
     parser = argparse.ArgumentParser()
@@ -106,17 +122,15 @@ def main():
     print("Request type:", args.type)
 
     response, elapsed_time, retries, query_size = send_dns_query(args.hostname, args.server_address, args.port_number, args.type, args.max_retries, args.timeout)
-
-    print("Response received after " + str(elapsed_time) + " seconds ("+ str(retries) +" retries)")
+    
+    if response:
+        print("Response received after " + str(elapsed_time) + " seconds ("+ str(retries) +" retries)")
  
     if response == None and retries == args.max_retries:
         print("ERROR \t Maximum number of retries "+ str(args.max_retries) +" exceeded")
         exit()
     
     response = decode_response(response, query_size)
-    # hi = decode_message(binascii.hexlify(response).decode("utf-8"))
-    # print(response)
-    # print(hi)
 
 if __name__ == "__main__":
     main()
