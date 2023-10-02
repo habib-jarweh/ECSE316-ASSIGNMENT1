@@ -18,17 +18,18 @@ def send_dns_query(domain_name, dns_server, dns_port, qtype, max_retries, timeou
 
     # Create a UDP socket
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_socket.settimeout(timeouts) 
 
     # Specify the DNS server's address and port
     server_address = (dns_server[1:], dns_port)
 
-    retries = 1
+    retries = 0
 
     # @timeout(timeouts)
     # def receive(udp_socket):
     #     return udp_socket.recvfrom(2048)
 
-    while retries <= max_retries:
+    while retries < max_retries:
 
         try:
 
@@ -50,19 +51,22 @@ def send_dns_query(domain_name, dns_server, dns_port, qtype, max_retries, timeou
             #     print("Request timed out, retrying")
             #     raise Exception
 
-            # Close the UDP socket
-            udp_socket.close()
-
             elapsed_time = end_time - start_time 
-
+            
+            udp_socket.close()
             return response, elapsed_time, retries, query_size
-
-        except Exception as e:
-            # print(f"An error occurred: {e}")
-            # time.sleep(timeouts)
+        
+        except socket.timeout:
             retries += 1
+            print("DNS query timed out. Retry " + str(retries) + "/" + str(max_retries))
 
+        # except Exception as e:
+        #     # print(f"An error occurred: {e}")
+        #     # time.sleep(timeouts)
+        #     retries += 1
 
+        #         # Close the UDP socket
+    
     return None, None, max_retries, "error"
 
 def main():
@@ -111,9 +115,9 @@ def main():
     if not args.hostname:
         print("\nERROR \t Incorrect input syntax: Please add a hostname")
         exit()
-    if not is_valid_hostname(args.hostname):
-        print("\nERROR \t Incorrect input syntax: Hostname is not valid")
-        exit()
+    # if not is_valid_hostname(args.hostname):
+    #     print("\nERROR \t Incorrect input syntax: Hostname is not valid")
+    #     exit()
     
     #Action
 
